@@ -1,14 +1,92 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import L from "leaflet";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { TextPlugin } from "gsap/TextPlugin";
 import "leaflet/dist/leaflet.css";
 import "./HomePage.css";
+import WeatherCard from "./WeatherCard";
+
+gsap.registerPlugin(ScrollTrigger, TextPlugin);
 
 function HomePage() {
   const [weatherData, setWeatherData] = useState(null);
   const [reportMsg, setReportMsg] = useState("");
+  const heroRef = useRef(null);
+  const headerRef = useRef(null);
+  const sectionsRef = useRef([]);
 
   useEffect(() => {
+    // GSAP Animations
+    const ctx = gsap.context(() => {
+      // Header entrance animation
+      if (headerRef.current) {
+        gsap.from(headerRef.current, {
+          y: -100,
+          opacity: 0,
+          duration: 1,
+          ease: "power3.out",
+        });
+      }
+
+      // Hero section animations with typewriter effect
+      const heroTitle = document.querySelector(".hero-title");
+      const heroSub = document.querySelector(".hero-sub");
+
+      if (heroTitle && heroSub) {
+        const heroTl = gsap.timeline({ delay: 0.3 });
+
+        // Typewriter effect for hero title
+        heroTl
+          .set(heroTitle, { opacity: 1 })
+          .to(heroTitle, {
+            text: "POWERED BY GEO SOLUTIONS",
+            duration: 2,
+            ease: "none",
+          })
+          .from(
+            heroSub,
+            {
+              y: 30,
+              opacity: 0,
+              duration: 0.8,
+              ease: "power3.out",
+            },
+            "-=0.3"
+          );
+      }
+
+      // Floating animation for hero background
+      const heroBefore = document.querySelector(".hero");
+      if (heroBefore) {
+        gsap.to(heroBefore, {
+          backgroundPosition: "50% 60%",
+          duration: 8,
+          yoyo: true,
+          repeat: -1,
+          ease: "sine.inOut",
+        });
+      }
+
+      // Simple scroll animation - just fade in sections
+      const validSections = sectionsRef.current.filter(
+        (section) => section !== null
+      );
+
+      validSections.forEach((section) => {
+        gsap.from(section, {
+          opacity: 0,
+          y: 30,
+          duration: 0.6,
+          scrollTrigger: {
+            trigger: section,
+            start: "top 80%",
+          },
+        });
+      });
+    });
+
     // Initialize map
     const map = L.map("map").setView([28.9845, 79.4141], 10);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -54,6 +132,8 @@ function HomePage() {
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      ctx.revert(); // Cleanup GSAP animations
+      ScrollTrigger.getAll().forEach((trigger) => trigger.kill()); // Kill all ScrollTriggers
       map.remove();
     };
   }, []);
@@ -67,21 +147,18 @@ function HomePage() {
       const data = await resp.json();
       setWeatherData(data);
 
-      // Animate weather card
-      const weatherCard = document.getElementById("weatherCard");
-      if (weatherCard) {
-        weatherCard.classList.remove("pop-yellow");
-        void weatherCard.offsetWidth;
-        weatherCard.classList.add("pop-yellow");
-      }
-
-      // Animate flood prediction button card (blue)
-      const floodCard = document.getElementById("floodPredictionCard");
-      if (floodCard) {
-        floodCard.classList.remove("pop-blue");
-        void floodCard.offsetWidth;
-        floodCard.classList.add("pop-blue");
-      }
+      // GSAP Animate weather card only
+      setTimeout(() => {
+        const weatherCard = document.getElementById("weatherCard");
+        if (weatherCard) {
+          gsap.from(weatherCard, {
+            scale: 0.95,
+            opacity: 0,
+            duration: 0.6,
+            ease: "back.out(1.5)",
+          });
+        }
+      }, 100);
     } catch (err) {
       console.error("Weather fetch error:", err);
     }
@@ -94,40 +171,39 @@ function HomePage() {
     setReportMsg(
       `✅ Thank you ${name}! Your report for ${loc} has been submitted.`
     );
+
+    // Animate success message
+    setTimeout(() => {
+      const msg = document.getElementById("reportMsg");
+      if (msg) {
+        gsap.from(msg, {
+          scale: 0.8,
+          opacity: 0,
+          y: -20,
+          duration: 0.5,
+          ease: "back.out(2)",
+        });
+      }
+    }, 50);
+
     ev.target.reset();
+    setTimeout(() => {
+      gsap.to("#reportMsg", {
+        opacity: 0,
+        y: -10,
+        duration: 0.3,
+        onComplete: () => setReportMsg(""),
+      });
+    }, 5000);
   };
 
   const renderWeather = () => {
-    if (!weatherData) {
-      return (
-        <p>
-          <b>Loading weather...</b>
-        </p>
-      );
-    }
-
-    const cur = weatherData.current_weather;
-    const temp = cur.temperature.toFixed(1);
-    const wind = cur.windspeed;
-
-    return (
-      <>
-        <p>
-          <b>Temperature:</b> {temp} °C
-        </p>
-        <p>
-          <b>Wind speed:</b> {wind} m/s
-        </p>
-        <p>
-          <b>Condition:</b> {cur.weathercode < 3 ? "Clear" : "Rain likely"}
-        </p>
-      </>
-    );
+    return <WeatherCard weatherData={weatherData} />;
   };
 
   return (
     <div className="home-page">
-      <header>
+      <header ref={headerRef}>
         <h1>Flood Help – Udham Singh Nagar</h1>
         <nav>
           <a href="#alerts">Alerts</a>
@@ -139,16 +215,16 @@ function HomePage() {
         </nav>
       </header>
 
-      <div className="hero">
+      <div className="hero" ref={heroRef}>
         <div className="hero-content">
-          <div className="hero-title">POWERED BY GEO SOLUTIONS</div>
+          <div className="hero-title"></div>
           <div className="hero-sub">
             Guidance, inundation map & reporting for local residents
           </div>
         </div>
       </div>
 
-      <section id="alerts">
+      <section id="alerts" ref={(el) => (sectionsRef.current[0] = el)}>
         <h2>Current Alerts & Weather</h2>
         <div className="card" id="weatherCard">
           <div id="weatherContainer" className="weather-box">
@@ -163,8 +239,8 @@ function HomePage() {
         </div>
       </section>
 
-      <section id="whatdo">
-        <h2>🚪 What To Do</h2>
+      <section id="whatdo" ref={(el) => (sectionsRef.current[1] = el)}>
+        <h2>Safety Guidelines</h2>
         <div className="card">
           <h3>Before Flood</h3>
           <ul>
@@ -183,8 +259,8 @@ function HomePage() {
         </div>
       </section>
 
-      <section id="helplines">
-        <h2>📞 Important Helplines</h2>
+      <section id="helplines" ref={(el) => (sectionsRef.current[2] = el)}>
+        <h2>Emergency Contacts</h2>
         <div className="card">
           <p>
             <b>District Disaster Management Authority:</b> 05944-250719
@@ -198,8 +274,8 @@ function HomePage() {
         </div>
       </section>
 
-      <section id="mapSection">
-        <h2>🗺 Flood Inundation Mapping</h2>
+      <section id="mapSection" ref={(el) => (sectionsRef.current[3] = el)}>
+        <h2>Interactive Flood Map</h2>
         <div className="card">
           <p>
             This map shows the <b>current estimated flood-prone areas</b> in
@@ -214,40 +290,59 @@ function HomePage() {
           style={{ textAlign: "center" }}
         >
           <Link to="/flood_prediction" className="btn">
-            Flood Prediction Model
+            <span>Advanced Prediction Model</span>
           </Link>
         </div>
       </section>
 
-      <section id="report">
-        <h2>📝 Report Flood</h2>
+      <section id="report" ref={(el) => (sectionsRef.current[4] = el)}>
+        <h2>Report Incident</h2>
         <div className="card">
           <form onSubmit={sendReport}>
             <label>
               Name:
-              <input type="text" id="rname" name="rname" />
+              <input
+                type="text"
+                id="rname"
+                name="rname"
+                placeholder="Your full name"
+              />
             </label>
             <label>
               Phone:
-              <input type="text" id="rphone" name="rphone" />
+              <input
+                type="tel"
+                id="rphone"
+                name="rphone"
+                placeholder="Your contact number"
+              />
             </label>
             <label>
               Location:
-              <input type="text" id="rloc" name="rloc" />
+              <input
+                type="text"
+                id="rloc"
+                name="rloc"
+                placeholder="Incident location"
+              />
             </label>
             <label>
               Details:
-              <textarea id="rdetails" name="rdetails"></textarea>
+              <textarea
+                id="rdetails"
+                name="rdetails"
+                placeholder="Describe the situation..."
+              ></textarea>
             </label>
             <button className="btn" type="submit">
-              Submit Report
+              <span>Submit Report</span>
             </button>
           </form>
-          <p id="reportMsg">{reportMsg}</p>
+          {reportMsg && <p id="reportMsg">{reportMsg}</p>}
         </div>
       </section>
 
-      <section id="about">
+      <section id="about" ref={(el) => (sectionsRef.current[5] = el)}>
         <h2>About This Site</h2>
         <div className="card">
           <p>

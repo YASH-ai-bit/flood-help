@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./FloodPredictionPage.css";
@@ -6,6 +7,7 @@ import "./FloodPredictionPage.css";
 function FloodPredictionPage() {
   const [activeLayers, setActiveLayers] = useState({});
   const [map, setMap] = useState(null);
+  const navigate = useNavigate();
   const BACKEND_URL = ""; // e.g. 'https://your-server.com' or '' if same origin
 
   useEffect(() => {
@@ -72,24 +74,27 @@ function FloodPredictionPage() {
   return (
     <div className="flood-prediction-page">
       <header>
-        <h1>Flood Help – Udham Singh Nagar</h1>
+        <button className="back-btn" onClick={() => navigate("/")}>
+          ← Back to Home
+        </button>
+        <h1>Flood Prediction Model</h1>
       </header>
 
       <div className="controls">
         <button className="btn" onClick={() => toggleLayer("srtm")}>
-          Toggle Elevation
+          Elevation Layer
         </button>
         <button className="btn" onClick={() => toggleLayer("slope")}>
-          Toggle Slope
+          Slope Analysis
         </button>
         <button className="btn" onClick={() => toggleLayer("occurrence")}>
-          Toggle Flood Occurrence
+          Flood History
         </button>
         <button className="btn" onClick={() => toggleLayer("inundation")}>
-          Toggle Potential Inundation
+          Inundation Risk
         </button>
         <button className="btn" onClick={downloadRainfall}>
-          Download Rainfall CSV
+          Export Rainfall Data
         </button>
       </div>
 
