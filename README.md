@@ -50,7 +50,7 @@ Start the development server:
 npm start
 ```
 
-The app will open at [http://localhost:3000](http://localhost:3000)
+The app will open at [click here](https://flood-help-one.vercel.app/)
 
 ### Building for Production
 
