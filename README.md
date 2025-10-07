@@ -139,4 +139,4 @@ For questions or support, please contact:
 
 ---
 
-Built with ❤️ for the safety of Udham Singh Nagar
+Built with ❤️ for the safety of Udham Singh Nagar.
